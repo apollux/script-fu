@@ -20,4 +20,3 @@ Start and stop multiple RabbitMQ brokers with a single command!
 
     # Download and extract the MP3 from the YouTube video.  Duh.
     % youtube-mp3.sh 'http://www.youtube.com/watch?v=ZOU8GIRUd_g'
-
