@@ -1,5 +1,8 @@
 #!/usr/bin/env tclsh
 
+package require Tcl 8.2
+package require cmdline 1.3.1
+
 set RESTART_LIMIT 5
 
 proc usage {} {
@@ -43,6 +46,20 @@ proc formatTime {} {
 }
 
 if {[llength $argv] >= 1} {
+    set options {
+        {type.arg "temporary" "restart type"}
+        {maxr.arg "5"         "restart count"}
+        {maxt.arg "1"         "time interval in seconds"}
+    }
+    set usage ": $argv0 \[options] <command> ...\noptions"
+    array set params [::cmdline::getoptions argv $options $usage]
+
+    puts -nonewline "Params ="
+    foreach {key value} [array get params] {
+        puts -nonewline " $key => $value;"
+    }
+    puts ""
+
     supervise $argv
 } else {
     usage
