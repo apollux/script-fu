@@ -14,12 +14,12 @@ proc usage {} {
     puts "\tRun <command> and restart it in case of non-0 exit."
 }
 
-proc supervise {args} {
+proc supervise {cmdList} {
     global RESTART_LIMIT
 
-    puts "*** Executing $args"
+    puts "*** Executing '$cmdList'"
     set i 0
-    while {[catch {eval eval exec $args} result]} {
+    while {[catch {runChild $cmdList} result]} {
         puts "*** Command failed ($result).  Restarting..."
         if {$i == $RESTART_LIMIT} {
             puts "*** Hit restart limit"
@@ -28,6 +28,18 @@ proc supervise {args} {
             incr i
         }
     }
+}
+
+proc runChild {cmdList} {
+    set cmd [lindex $cmdList 0]
+    puts "*** Starting '$cmd' at [formatTime]"
+    set result [eval exec $cmdList]
+    puts $result
+    puts "*** Exited '$cmd' normally at [formatTime]"
+}
+
+proc formatTime {} {
+    return [clock format [clock seconds] -format %H:%M:%S]
 }
 
 if {[llength $argv] >= 1} {
