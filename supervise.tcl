@@ -20,10 +20,11 @@ proc supervise {cmdList} {
     puts "*** Executing '$cmdList'"
     set i 0
     while {[catch {runChild $cmdList} result]} {
-        puts "*** Command failed ($result).  Restarting..."
+        puts "*** Command failed with:\n\t$result\n"
+        puts "*** Restarting..."
         if {$i == $RESTART_LIMIT} {
             puts "*** Hit restart limit"
-            break
+            exit 1
         } else {
             incr i
         }
@@ -33,8 +34,7 @@ proc supervise {cmdList} {
 proc runChild {cmdList} {
     set cmd [lindex $cmdList 0]
     puts "*** Starting '$cmd' at [formatTime]"
-    set result [eval exec $cmdList]
-    puts $result
+    eval exec $cmdList <@stdin >@stdout
     puts "*** Exited '$cmd' normally at [formatTime]"
 }
 
