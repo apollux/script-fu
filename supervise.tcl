@@ -3,8 +3,6 @@
 package require Tcl 8.2
 package require cmdline 1.3.1
 
-set RESTART_LIMIT 5
-
 proc usage {} {
     global argv0
     puts "NAME"
@@ -17,20 +15,19 @@ proc usage {} {
     puts "\tRun <command> and restart it in case of non-0 exit."
 }
 
-proc supervise {cmdList} {
-    global RESTART_LIMIT
-
-    puts "*** Executing '$cmdList'"
-    set i 0
+proc supervise {maxr maxt cmdList} {
+    puts "*** Executing '$cmdList' (max $maxr/$maxt)"
+    set restarts [list [now]]
     while {[catch {runChild $cmdList} result]} {
         puts "*** Command failed with:\n\t$result\n"
-        puts "*** Restarting..."
-        if {$i == $RESTART_LIMIT} {
-            puts "*** Hit restart limit"
+        if {[llength $restarts] == $maxr && \
+            [now] - [lindex $restarts 0] <= $maxt * 1000} {
+            puts "*** Hit restart intensity"
             exit 1
-        } else {
-            incr i
         }
+        puts "*** Restarting..."
+        lappend restarts [now]
+        set restarts [lrange $restarts end-[expr $maxr - 1] end]
     }
 }
 
@@ -39,6 +36,10 @@ proc runChild {cmdList} {
     puts "*** Starting '$cmd' at [formatTime]"
     eval exec $cmdList <@stdin >@stdout
     puts "*** Exited '$cmd' normally at [formatTime]"
+}
+
+proc now {} {
+    return [clock milliseconds]
 }
 
 proc formatTime {} {
@@ -54,13 +55,12 @@ if {[llength $argv] >= 1} {
     set usage ": $argv0 \[options] <command> ...\noptions"
     array set params [::cmdline::getoptions argv $options $usage]
 
-    puts -nonewline "Params ="
-    foreach {key value} [array get params] {
-        puts -nonewline " $key => $value;"
+    if {![string equal $params(type) temporary]} {
+        puts "Only temporary children are suppored atm"
+        exit 1
     }
-    puts ""
 
-    supervise $argv
+    supervise $params(maxr) $params(maxt) $argv
 } else {
     usage
     exit 1
