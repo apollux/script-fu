@@ -2,6 +2,14 @@ Script-Fu
 =========
 > Script Miscellanea
 
+## supervise.tcl
+
+Start a program and supervise it (i.e. restart it if it fails within
+certain bounds).
+
+    % # Run offlineimap.  Restart it if it closes with a non-zero exit, at most 5 times in 1 second.
+    % supervise.tcl -maxr 5 -maxt 1 /src/offlineimap/offlineimap.py -u Curses.Blinkenlights
+
 ## rabbitmq-multi.tcl
 
 Start and stop multiple RabbitMQ brokers with a single command!
@@ -14,7 +22,7 @@ Start and stop multiple RabbitMQ brokers with a single command!
     % rabbitmq-multi reload rabbit       # restart 'rabbit' completely using new code
     % rabbitmq-multi status hare         # check the status of 'hare'
 
-## youtube-mp3.tcl
+## youtube-mp3.sh
 
 > Requires [youtube-dl](http://rg3.github.com/youtube-dl/), and [mplayer](http://www.mplayerhq.hu/)
 
