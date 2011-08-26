@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [ "$#" -eq "1" -a -d "$1" ]; then
+	ls "$1"
+else
+	/bin/cat "$@"
+fi
+
