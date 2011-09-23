@@ -78,8 +78,11 @@ proc start_node {nodeName {nodePort auto}} {
         flush stdout
         set env(RABBITMQ_NODENAME) $nodeName
         set env(RABBITMQ_NODE_PORT) $nodePort
-        exec $RABBITMQ_BINARY -detached
-        puts "\t\tok"
+        if {[catch {exec $RABBITMQ_BINARY -detached}]} {
+            puts "\t\tfailed"
+        } else {
+            puts "\t\tok"
+        }
     } else {
         puts "  - already started: $nodeName"
     }
@@ -91,8 +94,11 @@ proc stop_node {nodeName} {
     } else {
         puts -nonewline "  - stopping: $nodeName "
         flush stdout
-        exec rabbitmqctl -n "$nodeName" stop
-        puts "\t\tok"
+        if {[catch {exec rabbitmqctl -n "$nodeName" stop}]} {
+            puts "\t\tfailed"
+        } else {
+            puts "\t\tok"
+        }
     }
 }
 
