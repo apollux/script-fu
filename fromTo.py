@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import hashlib
+import os
 import sys
 from Tkinter import *
 from tkMessageBox import *
@@ -60,7 +61,7 @@ class CopyDialog(Frame):
         self.console.insert("end", s + "\n")
 
     def appendSeparator(self):
-        self.console.insert("end", (self.console["width"] - 1) * "-" + "\n")
+        self.console.insert("end", (int(self.console["width"]) - 1) * "-" + "\n")
 
     def chooseOrigin(self):
         self.sourceV.set(askopenfilename())
@@ -79,27 +80,40 @@ class CopyDialog(Frame):
             fo = open(dest, "wb")
 
             i = 0
-            while True:
-                data = fi.read(self.CHUNK_SIZE)
+            n = os.stat(src).st_size / 1024 + 1
+            ok = True
+            for i in range(0, n):
+                data = None
+                try:
+                    data = fi.read(self.CHUNK_SIZE)
+                except Exception, e:
+                    self.appendConsole("Failed chunk at %d: %s" % (i,str(e)))
+                    ok = False
+                    fi = open(src, "rb")
+                    fo.write("\0" * self.CHUNK_SIZE)
+                    fi.seek(self.CHUNK_SIZE * i)
+                    continue
                 if not data:
                     break
                 fo.write(data)
-                self.appendConsole("Copied 1Kb chunk at " + str(i))
-                i += 1
+                self.appendConsole("Copied 1Kb chunk at %d (%d remaining)" % (i, n - i - 1))
 
             fo.close()
             fi.close()
 
+            if ok:
+                self.appendSeparator()
+                self.appendConsole("Comparing source and destination files")
+                m1 = self.md5(src)
+                m2 = self.md5(dest)
+                if m1 == m2:
+                    self.appendConsole("Source and destination are binary equal")
+                else:
+                    self.appendConsole("Warning: Source and destination differ")
             self.appendSeparator()
-            self.appendConsole("Comparing source and destination files")
-            m1 = self.md5(src)
-            m2 = self.md5(dest)
-            if m1 == m2:
-                self.appendConsole("Source and destination are binary equal")
-            else:
-                self.appendConsole("Warning: Source and destination differ")
+            self.appendConsole("Done.")
         except Exception, e:
-            self.appendConsole("Failed:\n" + str(e))
+            self.appendConsole("Failed irrecoverably:\n" + str(e))
 
     def md5(self, fn):
         m = hashlib.md5()
