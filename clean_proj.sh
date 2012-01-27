@@ -5,13 +5,13 @@ set -x
 du -sh .
 
 echo "Cleanning build files..."
-make clean
-cabal clean
-ant clean
+[ -f "Makefile" ] && make clean
+[ -f "build.xml" ] && ant clean
+[ -f "pom.xml" ] && mvn clean
 
 echo "Cleanning VC"
-git gc
-git gc --aggressive --prune=now
+[ -d ".git" ] && git gc
+[ -d ".git" ] && git gc --aggressive --prune=now
 
 du -sh .
 
