@@ -24,6 +24,13 @@ def requires_login(fun):
         fun(self, line)
     return f
 
+def show_progress(self, transferred, size):
+    done = 50 * float(transferred) / size
+    print "\r%.1f%% [%s>%s] %d/%d    " % (2 * done,
+                                          "#" * int(math.ceil(done)),
+                                          " " * int(50 - done),
+                                          transferred, size),
+
 class CloudFilesConsole(Cmd):
     def __init__(self):
         Cmd.__init__(self)
@@ -74,13 +81,13 @@ class CloudFilesConsole(Cmd):
             for c in cs:
                 print "%s/" % (c.name,)
         else:
-            for c in cs:
-                if c.name.find(line) == 0:
-                    objs = c.get_objects()
-                    for o in objs:
-                        print "%s/%s" % (c.name, o.name)
-                    return False
-            print "No such folder"
+            container = self.get_container(line)
+            if container is None:
+                print "No such folder"
+            else:
+                objs = container.get_objects()
+                for obj in objs:
+                    print "%s/%s" % (container.name, obj.name)
 
     @command
     @requires_login
@@ -99,15 +106,38 @@ class CloudFilesConsole(Cmd):
             for k, v in o.metadata:
                 print "    %s: %s" % (k, v)
 
+    @command
+    @requires_login
+    def do_put(self, line):
+        try:
+            [local, remote] = line.split()
+        except Exception, e:
+            print "Malformed command"
+            return False
+
+        local = os.path.expanduser(local)
+
+        try:
+            [container, obj] = remote.split('/')
+        except Exception, e:
+            print "Malformed remote: %s" % (remote,)
+            return False
+
+        container = self.conn.create_container(container)
+        if obj == "":
+            obj = os.path.basename(local)
+        obj = container.create_object(obj)
+
+        obj.load_from_filename(local, callback=show_progress)
+
     def do_EOF(self, _line):
         return True
 
     def get_container(self, name):
-        cs = self.conn.get_all_containers()
-        cs = [c for c in cs if c.name == name]
-        if len(cs) == 1:
-            return cs[0]
-        return None
+        try:
+            return self.conn.get_container(name)
+        except Exception, e:
+            return None
 
     def get_object(self, path, container = None):
         try:
@@ -118,10 +148,7 @@ class CloudFilesConsole(Cmd):
                 name = path
 
             if container is not None:
-                objs = container.get_objects()
-                objs = [obj for obj in objs if obj.name == name]
-                if len(objs) == 1:
-                    return objs[0]
+                return container.get_object(name)
         except Exception, e:
             pass
 
