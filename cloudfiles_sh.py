@@ -3,6 +3,7 @@
 import atexit
 import cloudfiles
 from cmd import Cmd
+import math
 import os
 import readline
 import sys
@@ -13,7 +14,7 @@ banner = """CloudFiles interactive shell
 def command(fun):
     def f(self, line):
         line = line.strip()
-        fun(self, line)
+        return fun(self, line)
     return f
 
 def requires_login(fun):
@@ -21,10 +22,10 @@ def requires_login(fun):
         if self.conn is None:
             print "Not logged in yet"
             return False
-        fun(self, line)
+        return fun(self, line)
     return f
 
-def show_progress(self, transferred, size):
+def show_progress(transferred, size):
     done = 50 * float(transferred) / size
     print "\r%.1f%% [%s>%s] %d/%d    " % (2 * done,
                                           "#" * int(math.ceil(done)),
@@ -116,6 +117,9 @@ class CloudFilesConsole(Cmd):
             return False
 
         local = os.path.expanduser(local)
+        if not os.path.isfile(local):
+            print "No such file: %s" % (local,)
+            return False
 
         try:
             [container, obj] = remote.split('/')
@@ -129,6 +133,7 @@ class CloudFilesConsole(Cmd):
         obj = container.create_object(obj)
 
         obj.load_from_filename(local, callback=show_progress)
+        print
 
     def do_EOF(self, _line):
         return True
