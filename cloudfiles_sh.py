@@ -35,7 +35,20 @@ prints them nicely."""
             return fun(self, line)
         except MalformedRemotePath, e:
             print e
+        except WrongNumberOfArguments, e:
+            print e
     return f
+
+def command_syntax(num_args):
+    """Decorator that checks the number of arguments passed to commands."""
+    def wrap(fun):
+        def f(self, line):
+            args = line.split()
+            if len(args) != num_args:
+                raise WrongNumberOfArguments(line, num_args)
+            return fun(self, *args)
+        return f
+    return wrap
 
 def show_progress(transferred, size):
     done = 50 * float(transferred) / size
@@ -43,6 +56,17 @@ def show_progress(transferred, size):
                                           "#" * int(math.ceil(done)),
                                           " " * int(50 - done),
                                           transferred, size),
+
+class WrongNumberOfArguments(TypeError):
+    def __init__(self, line, num_args):
+        super(WrongNumberOfArguments, self).__init__(self)
+        self.line = line
+        self.num_args = num_args
+
+    def __str__(self):
+        return ("Wrong number of arguments " +
+                "in `%s' (expected %d)" % (self.line,
+                                           self.num_args))
 
 class MalformedRemotePath(Exception):
     def __init__(self, remote_path):
@@ -121,13 +145,9 @@ class CloudFilesConsole(Cmd):
         print """remove <container>/<object>"""
 
     @command
-    def do_login(self, line):
-        try:
-            [user, token] = line.split()
-        except Exception, e:
-            print "Malformed command"
-            return False
-
+    @interpret_exceptions
+    @command_syntax(num_args=2)
+    def do_login(self, user, token):
         try:
             self.conn = cloudfiles.get_connection(
                             user, token,
@@ -137,12 +157,12 @@ class CloudFilesConsole(Cmd):
 
     @command
     @requires_login
-    def do_ls(self, line):
-        if line == "":
+    def do_ls(self, path):
+        if path == "":
             for cont_name in self.conn.list_containers():
                 print "%s/" % (cont_name,)
         else:
-            container = self.get_container(RemotePath(line).get_container())
+            container = self.get_container(RemotePath(path).get_container())
             if container is None:
                 print "No such folder"
             else:
@@ -151,31 +171,29 @@ class CloudFilesConsole(Cmd):
 
     @command
     @requires_login
-    def do_info(self, line):
-        o = self.get_object(line)
-        if o is None:
+    @interpret_exceptions
+    @command_syntax(num_args=1)
+    def do_info(self, path):
+        remote = RemotePath(path, object_optional=False)
+        obj = self.get_object(str(remote))
+        if obj is None:
             print "No such object"
             return False
 
-        print "%s/%s:" % (o.container.name, o.name)
-        print "MD5: %s" % (o.objsum,)
-        print "Size: %s bytes" % (o.size,)
-        print "Last modified: %s" % (o.last_modified,)
-        if o.metadata:
+        print "%s/%s:" % (obj.container.name, obj.name)
+        print "MD5: %s" % (obj.objsum,)
+        print "Size: %s bytes" % (obj.size,)
+        print "Last modified: %s" % (obj.last_modified,)
+        if obj.metadata:
             print "Metadata:"
-            for k, v in o.metadata:
+            for k, v in obj.metadata:
                 print "    %s: %s" % (k, v)
 
     @command
     @requires_login
     @interpret_exceptions
-    def do_put(self, line):
-        try:
-            [local, remote] = line.split()
-        except Exception, e:
-            print "Malformed command"
-            return False
-
+    @command_syntax(num_args=2)
+    def do_put(self, local, remote):
         local = os.path.expanduser(local)
         if not os.path.isfile(local):
             print "No such file: %s" % (local,)
@@ -193,13 +211,8 @@ class CloudFilesConsole(Cmd):
     @command
     @requires_login
     @interpret_exceptions
-    def do_get(self, line):
-        try:
-            [remote, local] = line.split()
-        except Exception, e:
-            print "Malformed command"
-            return False
-
+    @command_syntax(num_args=2)
+    def do_get(self, remote, local):
         remote = RemotePath(remote, object_optional=False)
 
         container = self.get_container(remote.get_container())
@@ -222,13 +235,8 @@ class CloudFilesConsole(Cmd):
     @command
     @requires_login
     @interpret_exceptions
-    def do_copy(self, line):
-        try:
-            [src, dest] = line.split()
-        except Exception, e:
-            print "Malformed command"
-            return False
-
+    @command_syntax(num_args=2)
+    def do_copy(self, src, dest):
         src = RemotePath(src, object_optional=False)
         dest = RemotePath(dest)
 
@@ -238,14 +246,15 @@ class CloudFilesConsole(Cmd):
             return False
 
         self.conn.create_container(dest.get_container())
-        src.copy_to(dest.get_container(),
-                    dest.get_object(default=src.get_object()))
+        src_obj.copy_to(dest.get_container(),
+                        dest.get_object(default=src.get_object()))
 
     @command
     @requires_login
     @interpret_exceptions
-    def do_remove(self, line):
-        remote = RemotePath(remote, object_optional=False)
+    @command_syntax(num_args=1)
+    def do_remove(self, path):
+        remote = RemotePath(path, object_optional=False)
 
         container = self.get_container(remote.get_container())
         if container is None:
