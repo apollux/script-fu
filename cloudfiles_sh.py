@@ -12,17 +12,29 @@ banner = """CloudFiles interactive shell
 """
 
 def command(fun):
+    """Decorator for cmd.Cmd commands."""
     def f(self, line):
         line = line.strip()
         return fun(self, line)
     return f
 
 def requires_login(fun):
+    """Decorator that asserts that the user is logged in."""
     def f(self, line):
         if self.conn is None:
             print "Not logged in yet"
             return False
         return fun(self, line)
+    return f
+
+def interpret_exceptions(fun):
+    """Decorator that catches recoverable exceptions and
+prints them nicely."""
+    def f(self, line):
+        try:
+            return fun(self, line)
+        except MalformedRemotePath, e:
+            print e
     return f
 
 def show_progress(transferred, size):
@@ -31,6 +43,37 @@ def show_progress(transferred, size):
                                           "#" * int(math.ceil(done)),
                                           " " * int(50 - done),
                                           transferred, size),
+
+class MalformedRemotePath(Exception):
+    def __init__(self, remote_path):
+        super(MalformedRemotePath, self).__init__(self)
+        self.remote_path = remote_path
+
+    def __str__(self):
+        return "Malformed remote path: %s" % (self.remote_path,)
+
+class RemotePath(object):
+    def __init__(self, remote_path, object_optional=True):
+        segs = [seg for seg in remote_path.split('/') if len(seg) > 0]
+        self.container = None
+        self.objekt = None
+        if len(segs) == 1 and object_optional:
+            self.container = segs[0]
+        elif len(segs) == 2:
+            (self.container, self.objekt) = (segs[0], segs[1])
+        else:
+            raise MalformedRemotePath(remote_path)
+
+    def get_container(self):
+        return self.container
+
+    def get_object(self, default=None):
+        if self.objekt is not None:
+            return self.objekt
+        return default
+
+    def __str__(self):
+        return "%s/%s" % (self.container, self.objekt)
 
 class CloudFilesConsole(Cmd):
     def __init__(self):
@@ -64,12 +107,18 @@ class CloudFilesConsole(Cmd):
         print "info <container>/<object>"
 
     def help_get(self):
-        print """get <local-file> <container>/<object>
-  if <object> is empty, it defaults to basename(<local-file>)"""
+        print """get <local-file> <container>[/<object>]
+  if <object> is ommited, it defaults to basename(<local-file>)"""
 
     def help_put(self):
         print """put <container>/<object> <local-file>
   if <local-file> is a directory, the object is saved to <local-file>/<object>"""
+
+    def help_copy(self):
+        print """copy <container>/<object> <container>[/<object>]"""
+
+    def help_remove(self):
+        print """remove <container>/<object>"""
 
     @command
     def do_login(self, line):
@@ -93,7 +142,7 @@ class CloudFilesConsole(Cmd):
             for cont_name in self.conn.list_containers():
                 print "%s/" % (cont_name,)
         else:
-            container = self.get_container(line)
+            container = self.get_container(RemotePath(line).get_container())
             if container is None:
                 print "No such folder"
             else:
@@ -119,6 +168,7 @@ class CloudFilesConsole(Cmd):
 
     @command
     @requires_login
+    @interpret_exceptions
     def do_put(self, line):
         try:
             [local, remote] = line.split()
@@ -131,22 +181,18 @@ class CloudFilesConsole(Cmd):
             print "No such file: %s" % (local,)
             return False
 
-        try:
-            [container, obj] = remote.split('/')
-        except Exception, e:
-            print "Malformed remote: %s" % (remote,)
-            return False
+        remote = RemotePath(remote)
 
-        container = self.conn.create_container(container)
-        if obj == "":
-            obj = os.path.basename(local)
-        obj = container.create_object(obj)
+        container = self.conn.create_container(remote.get_container())
+        obj = container.create_object(
+                  remote.get_object(default=os.path.basename(local)))
 
         obj.load_from_filename(local, callback=show_progress)
         print
 
     @command
     @requires_login
+    @interpret_exceptions
     def do_get(self, line):
         try:
             [remote, local] = line.split()
@@ -154,22 +200,18 @@ class CloudFilesConsole(Cmd):
             print "Malformed command"
             return False
 
-        try:
-            [container, obj] = remote.split('/')
-        except Exception, e:
-            print "Malformed remote: %s" % (remote,)
-            return False
+        remote = RemotePath(remote, object_optional=False)
 
-        container = self.get_container(container)
+        container = self.get_container(remote.get_container())
         if container is None:
             print "Remote does not exist"
             return False
 
         local = os.path.expanduser(local)
         if os.path.isdir(local):
-            local = os.path.join(local, obj)
+            local = os.path.join(local, container.get_object())
 
-        obj = self.get_object(obj, container=container)
+        obj = self.get_object(remote.get_object(), container=container)
         if obj is None:
             print "Remote does not exist"
             return False
@@ -179,6 +221,7 @@ class CloudFilesConsole(Cmd):
 
     @command
     @requires_login
+    @interpret_exceptions
     def do_copy(self, line):
         try:
             [src, dest] = line.split()
@@ -186,36 +229,31 @@ class CloudFilesConsole(Cmd):
             print "Malformed command"
             return False
 
-        try:
-            [dest_container, dest_obj] = dest.split('/')
-        except Exception, e:
-            print "Malformed remote: %s" % (dest,)
-            return False
+        src = RemotePath(src, object_optional=False)
+        dest = RemotePath(dest)
 
-        src = self.get_object(src)
+        src_obj = self.get_object(str(src))
         if src is None:
             print "Source does not exist"
             return False
 
-        self.conn.create_container(dest_container)
-        src.copy_to(dest_container, dest_obj)
+        self.conn.create_container(dest.get_container())
+        src.copy_to(dest.get_container(),
+                    dest.get_object(default=src.get_object()))
 
     @command
     @requires_login
+    @interpret_exceptions
     def do_remove(self, line):
-        try:
-            [container, obj] = line.split('/')
-        except Exception, e:
-            print "Malformed remote: %s" % (dest,)
-            return False
+        remote = RemotePath(remote, object_optional=False)
 
-        container = self.get_container(container)
+        container = self.get_container(remote.get_container())
         if container is None:
             print "Remote does not exist"
             return False
 
         try:
-            container.delete_object(obj)
+            container.delete_object(remote.get_object())
         except cloudfiles.errors.ResponseError, e:
             print "CloudFiles error: %s" % (str(e),)
 
@@ -231,8 +269,9 @@ class CloudFilesConsole(Cmd):
     def get_object(self, path, container = None):
         try:
             if container is None:
-                [container, name] = path.split('/')
-                container = self.get_container(container)
+                remote = RemotePath(path, object_optional=False)
+                container = self.get_container(remote.get_container())
+                name = remote.get_object()
             else:
                 name = path
 
