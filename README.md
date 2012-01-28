@@ -14,7 +14,8 @@ certain bounds).
 
 Start and stop multiple RabbitMQ brokers with a single command!
 
-> Assumes ```rabbitmq-multi``` is in ```PATH```.  Alternatively, set the ```RABBITMQ_BINARY``` environment variable.
+> Assumes ```rabbitmq-multi``` is in ```PATH```.  Alternatively, set
+  the ```RABBITMQ_BINARY``` environment variable.
 
     % rabbitmq-multi start rabbit hare   # start 'rabbit' and 'hare' on localhost
     % rabbitmq-multi reset hare rabbit   # reset both nodes
@@ -24,12 +25,20 @@ Start and stop multiple RabbitMQ brokers with a single command!
 
 ## youtube-mp3.sh
 
-> Requires [youtube-dl](http://rg3.github.com/youtube-dl/), and [mplayer](http://www.mplayerhq.hu/)
+> Requires [youtube-dl](http://rg3.github.com/youtube-dl/), and
+  [mplayer](http://www.mplayerhq.hu/)
 
     # Download and extract the MP3 from the YouTube video.  Duh.
     % youtube-mp3.sh 'http://www.youtube.com/watch?v=ZOU8GIRUd_g'
 
 ## cat
 
-If the only argument is a directory ```ls``` it, otherwise, behaves exactly like ```cat```.
+If the only argument is a directory ```ls``` it, otherwise, behaves
+exactly like ```cat```.
 
+## cloudfiles-sh.py
+
+A shell for interacting with Rackspace
+[CloudFiles](http://www.rackspace.com/cloud/cloud_hosting_products/files/).
+This is effectively a REPL that provides basic file operations
+(e.g. `ls', `info', `copy', `remove').
