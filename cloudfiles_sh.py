@@ -125,6 +125,9 @@ class CloudFilesConsole(Cmd):
     def help_login(self):
         print "login <username> <api-token>"
 
+    def help_login_uk(self):
+        print "login_uk <username> <api-token>"
+
     def help_ls(self):
         print "ls [<container>]"
 
@@ -149,6 +152,15 @@ class CloudFilesConsole(Cmd):
     @interpret_exceptions
     @command_syntax(num_args=2)
     def do_login(self, user, token):
+        try:
+            self.conn = cloudfiles.get_connection(user, token)
+        except Exception, e:
+            print "Login failed"
+
+    @command
+    @interpret_exceptions
+    @command_syntax(num_args=2)
+    def do_login_uk(self, user, token):
         try:
             self.conn = cloudfiles.get_connection(
                             user, token,
