@@ -170,6 +170,9 @@ class CloudFilesConsole(Cmd):
                 for obj_name in container.list_objects():
                     print "%s/%s" % (container.name, obj_name)
 
+    def complete_ls(self, text, line, begidx, endidx):
+        return self.complete_last(line)
+
     @command
     @requires_login
     @interpret_exceptions
@@ -190,6 +193,9 @@ class CloudFilesConsole(Cmd):
             for k, v in obj.metadata:
                 print "    %s: %s" % (k, v)
 
+    def complete_info(self, text, line, begidx, endidx):
+        return self.complete_last(line)
+
     @command
     @requires_login
     @interpret_exceptions
@@ -208,6 +214,9 @@ class CloudFilesConsole(Cmd):
 
         obj.load_from_filename(local, callback=show_progress)
         print
+
+    def complete_put(self, text, line, begidx, endidx):
+        return self.complete_last(line)
 
     @command
     @requires_login
@@ -233,6 +242,9 @@ class CloudFilesConsole(Cmd):
         obj.save_to_filename(local, callback=show_progress)
         print
 
+    def complete_get(self, text, line, begidx, endidx):
+        return self.complete_last(line)
+
     @command
     @requires_login
     @interpret_exceptions
@@ -249,6 +261,9 @@ class CloudFilesConsole(Cmd):
         self.conn.create_container(dest.get_container())
         src_obj.copy_to(dest.get_container(),
                         dest.get_object(default=src.get_object()))
+
+    def complete_copy(self, text, line, begidx, endidx):
+        return self.complete_last(line)
 
     @command
     @requires_login
@@ -268,23 +283,7 @@ class CloudFilesConsole(Cmd):
             print "CloudFiles error: %s" % (str(e),)
 
     def complete_remove(self, text, line, begidx, endidx):
-        if self.conn is None:
-            return []
-        segs = line.split()
-        prefix = ""
-        if len(segs) > 1:
-            prefix = segs[-1]
-        if prefix.find('/') == -1:
-            cs = self.conn.list_containers()
-            return [c for c in cs if c.find(prefix) == 0]
-        else:
-            remote = RemotePath(prefix)
-            container = self.get_container(remote.get_container())
-            if container is None:
-                return []
-            objs = container.list_objects()
-            return [o for o in objs
-                    if o.find(remote.get_object(default="")) == 0]
+        return self.complete_last(line)
 
     def do_EOF(self, _line):
         return True
@@ -310,6 +309,30 @@ class CloudFilesConsole(Cmd):
             pass
 
         return None
+
+    def complete_last(self, line):
+        if self.conn is None:
+            return []
+        segs = line.split()
+        prefix = ""
+        if len(segs) > 1:
+            prefix = segs[-1]
+
+        return self.get_remote_completions(prefix)
+
+    def get_remote_completions(self, prefix):
+        if prefix.find('/') == -1:
+            cs = self.conn.list_containers()
+            return [c for c in cs if c.find(prefix) == 0]
+        else:
+            remote = RemotePath(prefix)
+            container = self.get_container(remote.get_container())
+            if container is None:
+                return []
+            objs = container.list_objects()
+            return [o for o in objs
+                    if o.find(remote.get_object(default="")) == 0]
+
 
 def main(args):
     console = CloudFilesConsole()
