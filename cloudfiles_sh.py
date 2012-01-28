@@ -51,6 +51,9 @@ class CloudFilesConsole(Cmd):
     def save_history(self, histfile):
         readline.write_history_file(histfile)
 
+    def emptyline(self):
+        pass
+
     def help_login(self):
         print "login <username> <api-token>"
 
@@ -59,6 +62,14 @@ class CloudFilesConsole(Cmd):
 
     def help_info(self):
         print "info <container>/<object>"
+
+    def help_get(self):
+        print """get <local-file> <container>/<object>
+  if <object> is empty, it defaults to basename(<local-file>)"""
+
+    def help_put(self):
+        print """put <container>/<object> <local-file>
+  if <local-file> is a directory, the object is saved to <local-file>/<object>"""
 
     @command
     def do_login(self, line):
@@ -69,8 +80,9 @@ class CloudFilesConsole(Cmd):
             return False
 
         try:
-            self.conn = cloudfiles.get_connection(user, token,
-                                                  authurl = cloudfiles.uk_authurl)
+            self.conn = cloudfiles.get_connection(
+                            user, token,
+                            authurl = cloudfiles.uk_authurl)
         except Exception, e:
             print "Login failed"
 
@@ -133,6 +145,38 @@ class CloudFilesConsole(Cmd):
         obj = container.create_object(obj)
 
         obj.load_from_filename(local, callback=show_progress)
+        print
+
+    @command
+    @requires_login
+    def do_get(self, line):
+        try:
+            [remote, local] = line.split()
+        except Exception, e:
+            print "Malformed command"
+            return False
+
+        try:
+            [container, obj] = remote.split('/')
+        except Exception, e:
+            print "Malformed remote: %s" % (remote,)
+            return False
+
+        container = self.get_container(container)
+        if container is None:
+            print "Remote does not exist"
+            return False
+
+        local = os.path.expanduser(local)
+        if os.path.isdir(local):
+            local = os.path.join(local, obj)
+
+        obj = self.get_object(obj, container=container)
+        if obj is None:
+            print "Remote does not exist"
+            return False
+
+        obj.save_to_filename(local, callback=show_progress)
         print
 
     def do_EOF(self, _line):
