@@ -37,6 +37,7 @@ prints them nicely."""
             print e
         except WrongNumberOfArguments, e:
             print e
+        return False
     return f
 
 def command_syntax(num_args):
@@ -265,6 +266,25 @@ class CloudFilesConsole(Cmd):
             container.delete_object(remote.get_object())
         except cloudfiles.errors.ResponseError, e:
             print "CloudFiles error: %s" % (str(e),)
+
+    def complete_remove(self, text, line, begidx, endidx):
+        if self.conn is None:
+            return []
+        segs = line.split()
+        prefix = ""
+        if len(segs) > 1:
+            prefix = segs[-1]
+        if prefix.find('/') == -1:
+            cs = self.conn.list_containers()
+            return [c for c in cs if c.find(prefix) == 0]
+        else:
+            remote = RemotePath(prefix)
+            container = self.get_container(remote.get_container())
+            if container is None:
+                return []
+            objs = container.list_objects()
+            return [o for o in objs
+                    if o.find(remote.get_object(default="")) == 0]
 
     def do_EOF(self, _line):
         return True
