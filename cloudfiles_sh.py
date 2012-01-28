@@ -89,18 +89,16 @@ class CloudFilesConsole(Cmd):
     @command
     @requires_login
     def do_ls(self, line):
-        cs = self.conn.get_all_containers()
         if line == "":
-            for c in cs:
-                print "%s/" % (c.name,)
+            for cont_name in self.conn.list_containers():
+                print "%s/" % (cont_name,)
         else:
             container = self.get_container(line)
             if container is None:
                 print "No such folder"
             else:
-                objs = container.get_objects()
-                for obj in objs:
-                    print "%s/%s" % (container.name, obj.name)
+                for obj_name in container.list_objects():
+                    print "%s/%s" % (container.name, obj_name)
 
     @command
     @requires_login
@@ -178,6 +176,48 @@ class CloudFilesConsole(Cmd):
 
         obj.save_to_filename(local, callback=show_progress)
         print
+
+    @command
+    @requires_login
+    def do_copy(self, line):
+        try:
+            [src, dest] = line.split()
+        except Exception, e:
+            print "Malformed command"
+            return False
+
+        try:
+            [dest_container, dest_obj] = dest.split('/')
+        except Exception, e:
+            print "Malformed remote: %s" % (dest,)
+            return False
+
+        src = self.get_object(src)
+        if src is None:
+            print "Source does not exist"
+            return False
+
+        self.conn.create_container(dest_container)
+        src.copy_to(dest_container, dest_obj)
+
+    @command
+    @requires_login
+    def do_remove(self, line):
+        try:
+            [container, obj] = line.split('/')
+        except Exception, e:
+            print "Malformed remote: %s" % (dest,)
+            return False
+
+        container = self.get_container(container)
+        if container is None:
+            print "Remote does not exist"
+            return False
+
+        try:
+            container.delete_object(obj)
+        except cloudfiles.errors.ResponseError, e:
+            print "CloudFiles error: %s" % (str(e),)
 
     def do_EOF(self, _line):
         return True
