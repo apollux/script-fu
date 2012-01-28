@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
+
+from __future__ import print_function
 
 import atexit
 import cloudfiles
@@ -22,7 +24,7 @@ def requires_login(fun):
     """Decorator that asserts that the user is logged in."""
     def f(self, line):
         if self.conn is None:
-            print "Not logged in yet"
+            print("Not logged in yet")
             return False
         return fun(self, line)
     return f
@@ -33,10 +35,10 @@ prints them nicely."""
     def f(self, line):
         try:
             return fun(self, line)
-        except MalformedRemotePath, e:
-            print e
-        except WrongNumberOfArguments, e:
-            print e
+        except MalformedRemotePath as e:
+            print(e)
+        except WrongNumberOfArguments as e:
+            print(e)
         return False
     return f
 
@@ -53,10 +55,11 @@ def command_syntax(num_args):
 
 def show_progress(transferred, size):
     done = 50 * float(transferred) / size
-    print "\r%.1f%% [%s>%s] %d/%d    " % (2 * done,
+    print("\r%.1f%% [%s>%s] %d/%d    " % (2 * done,
                                           "#" * int(math.ceil(done)),
                                           " " * int(50 - done),
                                           transferred, size),
+          end=''),
 
 class WrongNumberOfArguments(TypeError):
     def __init__(self, line, num_args):
@@ -123,30 +126,30 @@ class CloudFilesConsole(Cmd):
         pass
 
     def help_login(self):
-        print "login <username> <api-token>"
+        print("login <username> <api-token>")
 
     def help_login_uk(self):
-        print "login_uk <username> <api-token>"
+        print("login_uk <username> <api-token>")
 
     def help_ls(self):
-        print "ls [<container>]"
+        print("ls [<container>]")
 
     def help_info(self):
-        print "info <container>/<object>"
+        print("info <container>/<object>")
 
     def help_get(self):
-        print """get <local-file> <container>[/<object>]
-  if <object> is ommited, it defaults to basename(<local-file>)"""
+        print("""get <local-file> <container>[/<object>]
+  if <object> is ommited, it defaults to basename(<local-file>)""")
 
     def help_put(self):
-        print """put <container>/<object> <local-file>
-  if <local-file> is a directory, the object is saved to <local-file>/<object>"""
+        print("""put <container>/<object> <local-file>
+  if <local-file> is a directory, the object is saved to <local-file>/<object>""")
 
     def help_copy(self):
-        print """copy <container>/<object> <container>[/<object>]"""
+        print("""copy <container>/<object> <container>[/<object>]""")
 
     def help_remove(self):
-        print """remove <container>/<object>"""
+        print("""remove <container>/<object>""")
 
     @command
     @interpret_exceptions
@@ -154,8 +157,8 @@ class CloudFilesConsole(Cmd):
     def do_login(self, user, token):
         try:
             self.conn = cloudfiles.get_connection(user, token)
-        except Exception, e:
-            print "Login failed"
+        except Exception as e:
+            print("Login failed")
 
     @command
     @interpret_exceptions
@@ -165,22 +168,22 @@ class CloudFilesConsole(Cmd):
             self.conn = cloudfiles.get_connection(
                             user, token,
                             authurl = cloudfiles.uk_authurl)
-        except Exception, e:
-            print "Login failed"
+        except Exception as e:
+            print("Login failed")
 
     @command
     @requires_login
     def do_ls(self, path):
         if path == "":
             for cont_name in self.conn.list_containers():
-                print "%s/" % (cont_name,)
+                print("%s/" % (cont_name,))
         else:
             container = self.get_container(RemotePath(path).get_container())
             if container is None:
-                print "No such folder"
+                print("No such folder")
             else:
                 for obj_name in container.list_objects():
-                    print "%s/%s" % (container.name, obj_name)
+                    print("%s/%s" % (container.name, obj_name))
 
     def complete_ls(self, text, line, begidx, endidx):
         return self.complete_last(line, self.get_remote_completions)
@@ -193,17 +196,17 @@ class CloudFilesConsole(Cmd):
         remote = RemotePath(path, object_optional=False)
         obj = self.get_object(str(remote))
         if obj is None:
-            print "No such object"
+            print("No such object")
             return False
 
-        print "%s/%s:" % (obj.container.name, obj.name)
-        print "MD5: %s" % (obj.objsum,)
-        print "Size: %s bytes" % (obj.size,)
-        print "Last modified: %s" % (obj.last_modified,)
+        print("%s/%s:" % (obj.container.name, obj.name))
+        print("MD5: %s" % (obj.objsum,))
+        print("Size: %s bytes" % (obj.size,))
+        print("Last modified: %s" % (obj.last_modified,))
         if obj.metadata:
-            print "Metadata:"
+            print("Metadata:")
             for k, v in obj.metadata:
-                print "    %s: %s" % (k, v)
+                print("    %s: %s" % (k, v))
 
     def complete_info(self, text, line, begidx, endidx):
         return self.complete_last(line, self.get_remote_completions)
@@ -215,7 +218,7 @@ class CloudFilesConsole(Cmd):
     def do_put(self, local, remote):
         local = os.path.expanduser(local)
         if not os.path.isfile(local):
-            print "No such file: %s" % (local,)
+            print("No such file: %s" % (local,))
             return False
 
         remote = RemotePath(remote)
@@ -225,7 +228,7 @@ class CloudFilesConsole(Cmd):
                   remote.get_object(default=os.path.basename(local)))
 
         obj.load_from_filename(local, callback=show_progress)
-        print
+        print("")
 
     def complete_put(self, text, line, begidx, endidx):
         segs = line.split()
@@ -245,7 +248,7 @@ class CloudFilesConsole(Cmd):
 
         container = self.get_container(remote.get_container())
         if container is None:
-            print "Remote does not exist"
+            print("Remote does not exist")
             return False
 
         local = os.path.expanduser(local)
@@ -254,11 +257,11 @@ class CloudFilesConsole(Cmd):
 
         obj = self.get_object(remote.get_object(), container=container)
         if obj is None:
-            print "Remote does not exist"
+            print("Remote does not exist")
             return False
 
         obj.save_to_filename(local, callback=show_progress)
-        print
+        print("")
 
     def complete_get(self, text, line, begidx, endidx):
         segs = line.split()
@@ -279,7 +282,7 @@ class CloudFilesConsole(Cmd):
 
         src_obj = self.get_object(str(src))
         if src is None:
-            print "Source does not exist"
+            print("Source does not exist")
             return False
 
         self.conn.create_container(dest.get_container())
@@ -298,13 +301,13 @@ class CloudFilesConsole(Cmd):
 
         container = self.get_container(remote.get_container())
         if container is None:
-            print "Remote does not exist"
+            print("Remote does not exist")
             return False
 
         try:
             container.delete_object(remote.get_object())
-        except cloudfiles.errors.ResponseError, e:
-            print "CloudFiles error: %s" % (str(e),)
+        except cloudfiles.errors.ResponseError as e:
+            print("CloudFiles error: %s" % (str(e),))
 
     def complete_remove(self, text, line, begidx, endidx):
         return self.complete_last(line, self.get_remote_completions)
@@ -315,7 +318,7 @@ class CloudFilesConsole(Cmd):
     def get_container(self, name):
         try:
             return self.conn.get_container(name)
-        except Exception, e:
+        except Exception as e:
             return None
 
     def get_object(self, path, container = None):
@@ -329,7 +332,7 @@ class CloudFilesConsole(Cmd):
 
             if container is not None:
                 return container.get_object(name)
-        except Exception, e:
+        except Exception as e:
             pass
 
         return None
@@ -371,8 +374,8 @@ def main(args):
     console = CloudFilesConsole()
     console.cmdloop(banner)
 
-    print ""
-    print "Done"
+    print("")
+    print("Done")
 
 if __name__ == "__main__":
     main(sys.argv[1:])
