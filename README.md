@@ -41,4 +41,4 @@ exactly like ```cat```.
 A shell for interacting with Rackspace
 [CloudFiles](http://www.rackspace.com/cloud/cloud_hosting_products/files/).
 This is effectively a REPL that provides basic file operations
-(e.g. `ls', `info', `copy', `remove').
+(e.g. `ls`, `info`, `copy`, `remove`).
