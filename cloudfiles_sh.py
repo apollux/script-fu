@@ -171,7 +171,7 @@ class CloudFilesConsole(Cmd):
                     print "%s/%s" % (container.name, obj_name)
 
     def complete_ls(self, text, line, begidx, endidx):
-        return self.complete_last(line)
+        return self.complete_last(line, self.get_remote_completions)
 
     @command
     @requires_login
@@ -194,7 +194,7 @@ class CloudFilesConsole(Cmd):
                 print "    %s: %s" % (k, v)
 
     def complete_info(self, text, line, begidx, endidx):
-        return self.complete_last(line)
+        return self.complete_last(line, self.get_remote_completions)
 
     @command
     @requires_login
@@ -216,7 +216,13 @@ class CloudFilesConsole(Cmd):
         print
 
     def complete_put(self, text, line, begidx, endidx):
-        return self.complete_last(line)
+        segs = line.split()
+        if len(segs) in [1, 2]:
+            return self.complete_last(line, self.get_file_completions)
+        elif len(segs) == 3:
+            return self.complete_last(line, self.get_remote_completions)
+        else:
+            return []
 
     @command
     @requires_login
@@ -232,7 +238,7 @@ class CloudFilesConsole(Cmd):
 
         local = os.path.expanduser(local)
         if os.path.isdir(local):
-            local = os.path.join(local, container.get_object())
+            local = os.path.join(local, remote.get_object())
 
         obj = self.get_object(remote.get_object(), container=container)
         if obj is None:
@@ -243,7 +249,13 @@ class CloudFilesConsole(Cmd):
         print
 
     def complete_get(self, text, line, begidx, endidx):
-        return self.complete_last(line)
+        segs = line.split()
+        if len(segs) in [1, 2]:
+            return self.complete_last(line, self.get_remote_completions)
+        elif len(segs) == 3:
+            return self.complete_last(line, self.get_file_completions)
+        else:
+            return []
 
     @command
     @requires_login
@@ -263,7 +275,7 @@ class CloudFilesConsole(Cmd):
                         dest.get_object(default=src.get_object()))
 
     def complete_copy(self, text, line, begidx, endidx):
-        return self.complete_last(line)
+        return self.complete_last(line, self.get_remote_completions)
 
     @command
     @requires_login
@@ -283,7 +295,7 @@ class CloudFilesConsole(Cmd):
             print "CloudFiles error: %s" % (str(e),)
 
     def complete_remove(self, text, line, begidx, endidx):
-        return self.complete_last(line)
+        return self.complete_last(line, self.get_remote_completions)
 
     def do_EOF(self, _line):
         return True
@@ -310,7 +322,7 @@ class CloudFilesConsole(Cmd):
 
         return None
 
-    def complete_last(self, line):
+    def complete_last(self, line, completer):
         if self.conn is None:
             return []
         segs = line.split()
@@ -318,7 +330,7 @@ class CloudFilesConsole(Cmd):
         if len(segs) > 1:
             prefix = segs[-1]
 
-        return self.get_remote_completions(prefix)
+        return completer(prefix)
 
     def get_remote_completions(self, prefix):
         if prefix.find('/') == -1:
@@ -332,6 +344,15 @@ class CloudFilesConsole(Cmd):
             objs = container.list_objects()
             return [o for o in objs
                     if o.find(remote.get_object(default="")) == 0]
+
+    def get_file_completions(self, prefix):
+        prefix = os.path.expanduser(prefix)
+        (d, p) = os.path.split(prefix)
+        if d == "":
+            d = "."
+        if os.path.isdir(d):
+            return [f for f in os.listdir(d) if f.find(p) == 0]
+        return []
 
 
 def main(args):
