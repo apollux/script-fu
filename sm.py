@@ -70,7 +70,7 @@ class Screen(gtk.DrawingArea):
                 text_size += size_increment
             size_increment = int(size_increment / 2)
 
-        cr.set_font_size(text_size + size_increment)
+        cr.set_font_size(text_size)
         (_, _, text_width, text_height, _, _) = cr.text_extents(text)
         cr.move_to(width / 2 - text_width / 2, height / 2 + text_height / 2)
         cr.show_text(text)
