@@ -36,6 +36,13 @@ Start and stop multiple RabbitMQ brokers with a single command!
 If the only argument is a directory ```ls``` it, otherwise, behaves
 exactly like ```cat```.
 
+## fromTo.py
+
+A Tkinter UI for copying files from damaged media such as scratched
+DVDs.  It's particularly useful on Windows where Explorer refuses to
+copy a file if any block in it is unreadable; when this happens, this
+script the corresponding 1Kb block with zeros.
+
 ## cloudfiles-sh.py
 
 A shell for interacting with Rackspace
