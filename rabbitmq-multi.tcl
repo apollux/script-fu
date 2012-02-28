@@ -78,6 +78,8 @@ proc start_node {nodeName {nodePort auto}} {
         flush stdout
         set env(RABBITMQ_NODENAME) $nodeName
         set env(RABBITMQ_NODE_PORT) $nodePort
+        set env(RABBITMQ_CONFIG_FILE) "/etc/rabbitmq/rabbitmq_$nodeName"
+        set env(RABBITMQ_ENABLED_PLUGINS_FILE) "/etc/rabbitmq/enabled_plugins_$nodeName"
         if {[catch {exec $RABBITMQ_BINARY -detached}]} {
             puts "\t\tfailed"
         } else {
