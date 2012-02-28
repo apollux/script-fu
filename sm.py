@@ -10,6 +10,7 @@ import pygtk
 
 class Screen(gtk.DrawingArea):
     __gsignals__ = { "expose-event": "override" }
+    printable_chars = string.digits + string.letters + string.punctuation
 
     def __init__(self):
         super(Screen, self).__init__()
@@ -26,6 +27,9 @@ class Screen(gtk.DrawingArea):
         self.draw(cr, *self.window.get_size())
 
     def on_key_press(self, event):
+        def is_printable_char(key):
+            return key in self.printable_chars
+
         keyname = gtk.gdk.keyval_name(event.keyval)
         if keyname == "Escape":
             gtk.main_quit()
@@ -39,7 +43,7 @@ class Screen(gtk.DrawingArea):
                 self.text[-1] = last[:-1]
             elif len(self.text) > 1:
                 del self.text[-1]
-        elif event.keyval < 256 and self.is_printable_char(chr(event.keyval)):
+        elif event.keyval < 256 and is_printable_char(chr(event.keyval)):
             self.text[-1].append(chr(event.keyval))
         else:
             print("Unhandled key '%s' pressed" % (keyname, ))
@@ -55,12 +59,15 @@ class Screen(gtk.DrawingArea):
 
         self.show_texts(cr, width, height, 40, 200)
 
-    def is_printable_char(self, key):
-        return key in (string.digits + string.letters + string.punctuation)
-
     def show_texts(self, cr, width, height, min_text_size, max_text_size):
         text_size = min_text_size
         text = " ".join(("".join(cs) for cs in self.text))
+
+        results = []
+        for num_rows in xrange(1, len(self.text) + 1):
+            badness = num_rows * 10
+            print("Trying %d rows; badness = %f" % (num_rows, badness))
+            results.append((num_rows, badness))
 
         size_increment = int(max_text_size - min_text_size)
         while size_increment > 0:
