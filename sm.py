@@ -60,14 +60,19 @@ class Screen(gtk.DrawingArea):
         self.show_texts(cr, width, height, 40, 200)
 
     def show_texts(self, cr, width, height, min_text_size, max_text_size):
+        def fit_text(num_rows):
+            return (num_rows * 10, 40)
+
         text_size = min_text_size
         text = " ".join(("".join(cs) for cs in self.text))
 
-        results = []
+        best_badness, best_text_size, best_num_rows = float('inf'), 0, 0
         for num_rows in xrange(1, len(self.text) + 1):
-            badness = num_rows * 10
+            (badness, text_size) = fit_text(num_rows)
             print("Trying %d rows; badness = %f" % (num_rows, badness))
-            results.append((num_rows, badness))
+            if badness < best_badness:
+                best_badness, best_text_size = badness, text_size
+                best_num_rows = num_rows
 
         size_increment = int(max_text_size - min_text_size)
         while size_increment > 0:
