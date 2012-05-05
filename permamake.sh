@@ -11,7 +11,7 @@ function usage {
 function snapshot_files {
     snapshot=''
     for file in $1; do
-        snapshot=${snapshot}$(ls -lc --time-style=+%T:%N mugen.ml | cut -d' ' -f6),
+        snapshot=${snapshot}$(ls -lc --time-style=+%T:%N ${file} | cut -d' ' -f6),
     done
 }
 
@@ -19,7 +19,6 @@ function check_snapshot {
     aux_snapshot=${snapshot}
     snapshot_files "$1"
     if [ "x${snapshot}" != "x${aux_snapshot}" ]; then
-        snapshot=${aux_snapshot}
         return 0
     else
         return 1
