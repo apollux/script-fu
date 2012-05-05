@@ -2,6 +2,10 @@ Script-Fu
 =========
 > Script Miscellanea
 
+## permamake.sh
+
+Run `make` when watched files change.
+
 ## supervise.tcl
 
 Start a program and supervise it (i.e. restart it if it fails within
