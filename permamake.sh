@@ -31,13 +31,14 @@ bldred=${txtbld}$(tput setaf 1) #  Red
 bldgre=${txtbld}$(tput setaf 2) #  Green
 txtrst=$(tput sgr0)             # Reset
 
-
+# Check for inotifywait
 if ! type inotifywait > /dev/null; then
     echo "The command 'inotifywait' is required but not available."
     echo "Install 'inotify-tools'."
     exit 1
 fi
 
+# Parse command line
 while getopts "h" opt; do
     case ${opt} in
         h)
@@ -46,11 +47,10 @@ while getopts "h" opt; do
             ;;
     esac
 done
-
 shift $((${OPTIND} - 1))
 
+# Loop forever
 files="$*"
-
 snapshot_files "${files}"
 while true; do
     echo "${txtbld}### Building...${txtrst}"
