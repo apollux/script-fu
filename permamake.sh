@@ -48,8 +48,11 @@ files="$*"
 snapshot_files "${files}"
 while true; do
     echo "### Building..."
-    make
-    echo -e "### Done\n"
+    if make; then
+        echo -e "### Done\n"
+    else
+        echo -e "### Build failed\n"
+    fi
 
     if check_snapshot "${files}"; then
         echo "### Files changed while building"
