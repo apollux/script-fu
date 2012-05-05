@@ -26,6 +26,13 @@ function check_snapshot {
     fi
 }
 
+# Colours and styles
+txtbld=$(tput bold)             # Bold
+bldred=${txtbld}$(tput setaf 1) #  Red
+bldgre=${txtbld}$(tput setaf 2) #  Green
+txtrst=$(tput sgr0)             # Reset
+
+
 if ! type inotifywait > /dev/null; then
     echo "The command 'inotifywait' is required but not available."
     echo "Install 'inotify-tools'."
@@ -47,20 +54,20 @@ files="$*"
 
 snapshot_files "${files}"
 while true; do
-    echo "### Building..."
+    echo "${txtbld}### Building...${txtrst}"
     if make; then
-        echo -e "### Done\n"
+        echo -e "${bldgre}### Done${txtrst}\n"
     else
-        echo -e "### Build failed\n"
+        echo -e "${bldred}### Build failed${txtrst}\n"
     fi
 
     if check_snapshot "${files}"; then
-        echo "### Files changed while building"
+        echo "${txtbld}### Files changed while building${txtrst}"
         continue
     fi
 
-    echo "### Waiting for filesystem changes..."
+    echo "${txtbld}### Waiting for filesystem changes...${txtrst}"
     inotifywait -q -e create -e close_write -e modify ${files}
-    echo -e "### Files changed\n"
+    echo -e "${txtbld}### Files changed${txtrst}\n"
     snapshot_files "${files}"
 done
