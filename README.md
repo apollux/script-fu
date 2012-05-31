@@ -2,6 +2,16 @@ Script-Fu
 =========
 > Script Miscellanea
 
+## tcpdump.sh
+
+> Poorman's tcpdump: an intercepting transparent proxy with a pipe and two netcats
+
+    ./tcpdump.sh 8080 www3.imperial.ac.uk 80
+
+Point your browser at [localhost:8080](http://localhost:8080).  Two
+files will be created: `incoming.dump` and `outgoing.dump`,
+representing the incoming and outgoing data transferred respectively.
+
 ## permamake.sh
 
 Run `make` when watched files change.
