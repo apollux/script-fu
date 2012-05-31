@@ -2,9 +2,6 @@
 
 # USAGE: ./tcpdump.sh <local-port> <host> <port>
 
-# For the original netcat, add '-p' before ${local} in the netcat
-# invocation.
-
 # Reference: http://blog.hawkhost.com/2009/12/12/using-netcat-as-an-intercepting-proxy/
 
 set -e
