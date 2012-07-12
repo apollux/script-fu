@@ -147,11 +147,11 @@ data TopicItem = TI { topicName :: Topic
 -- define some custom topics for use with the TopicSpace module.
 myTopics :: [TopicItem]
 myTopics = [ TI "os" "" (spawnEmacs)
-           , TI "web" "" (spawn "chromium")
+           , TI "web" "" (spawn "firefox-bin")
            , TI "irc" "" ({- spawn "skype" >> -} spawnShellWith "weechat-curses")
            , TI "mail" "" (spawnShellWith "tmux att -t email" >>
                            spawnShellWith "mutt")
-           , TI "music" "music" (spawn "amarok")
+           , TI "music" "music" (spawnShellWith "cmus")
            , TI "files" "" (spawn "dolphin")
            , TI "doc" "" (return ())
            , TI "alt" "" (return ())
