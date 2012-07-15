@@ -4,11 +4,13 @@
 module Main where
 
 import Data.Maybe ( fromJust, catMaybes )
-import Network.HTTP
-import Network.URI
-import Text.XML.HaXml ( Document(..), Element(..), (/>), tag, txt, CFilter )
+import Network.HTTP ( Request(..), RequestMethod(..), Response(..)
+                    , HeaderName(..), findHeader
+                    , simpleHTTP )
+import Network.URI ( parseURI )
+import Text.XML.HaXml ( Document(..), Element(..)
+                      , (/>), tag, txt )
 import Text.XML.HaXml.Parse ( xmlParse' )
-import Text.XML.HaXml.Posn ( Posn )
 import Text.XML.HaXml.Pretty ( content )
 import Text.Interpol ( (^-^) )
 
@@ -23,8 +25,6 @@ data Feed = Feed { feedEntries :: [Entry] }
 instance Show Feed where
     show (Feed { feedEntries = es }) =
         unlines (concat [["<ul>"], map show es, ["</ul>"]])
-
--- Writer instance for Either goes here.
 
 getUrl :: String -> IO (Either String String)
 getUrl url = do
