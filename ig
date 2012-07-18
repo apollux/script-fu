@@ -41,24 +41,58 @@ data FeedDescription =
 instance Show FeedDescription where
     show fd = "<FeedDescription for " ^-^ fdTitle fd ^-^ ">"
 
-slashdotFeedDesc :: FeedDescription
-slashdotFeedDesc =
+defaultFeedDesc :: FeedDescription
+defaultFeedDesc =
     FeedDescription
-    { fdTitle       = "Slashdot"
-    , fdUri         = fromJust (parseURI "http://rss.slashdot.org/Slashdot/slashdot")
-    , fdItemFilter  = tag "item"
+    { fdTitle       = "The Mysterious Feed"
+    , fdUri         = fromJust (parseURI "http://boom.org/kaboom.rss")
+    , fdItemFilter  = tag "channel" /> tag "item"
     , fdTitleFilter = tag "item" /> tag "title" /> txt
     , fdLinkFilter  = tag "item" /> tag "link" /> txt
     }
 
+slashdotFeedDesc :: FeedDescription
+slashdotFeedDesc =
+    defaultFeedDesc
+    { fdTitle      = "Slashdot"
+    , fdUri        = fromJust (parseURI "http://rss.slashdot.org/Slashdot/slashdot")
+    , fdItemFilter = tag "item"
+    }
+
 hackerNewsFeedDesc :: FeedDescription
 hackerNewsFeedDesc =
-    FeedDescription
-    { fdTitle       = "Hacker News"
-    , fdUri         = fromJust (parseURI "http://news.ycombinator.com/rss")
-    , fdItemFilter  = tag "channel" /> tag "item"
-    , fdTitleFilter = tag "item" /> tag "title" /> txt
-    , fdLinkFilter  = tag "item" /> tag "comments" /> txt
+    defaultFeedDesc
+    { fdTitle      = "Hacker News"
+    , fdUri        = fromJust (parseURI "http://news.ycombinator.com/rss")
+    , fdLinkFilter = tag "item" /> tag "comments" /> txt
+    }
+
+techdirtFeedDesc :: FeedDescription
+techdirtFeedDesc =
+    defaultFeedDesc
+    { fdTitle = "Techdirt"
+    , fdUri   = fromJust (parseURI "http://www.techdirt.com/techdirt_rss.xml")
+    }
+
+osNewsFeedDesc :: FeedDescription
+osNewsFeedDesc =
+    defaultFeedDesc
+    { fdTitle       = "OSNews"
+    , fdUri         = fromJust (parseURI "http://www.osnews.com/files/recent.xml")
+    }
+
+wiredFeedDesc :: FeedDescription
+wiredFeedDesc =
+    defaultFeedDesc
+    { fdTitle       = "Wired Top Stories"
+    , fdUri         = fromJust (parseURI "http://feeds.wired.com/wired/index")
+    }
+
+bookmarksFeedDesc :: FeedDescription
+bookmarksFeedDesc =
+    defaultFeedDesc
+    { fdTitle       = "Bookmarks"
+    , fdUri         = fromJust (parseURI "http://www.abstractbinary.org/bookmarks.rss")
     }
 
 getUri :: URI -> IO (Either String String)
@@ -111,5 +145,8 @@ getFeed fd = do
 
 main :: IO ()
 main = do
-    print =<< getFeed slashdotFeedDesc
-    print =<< getFeed hackerNewsFeedDesc
+    -- print =<< getFeed slashdotFeedDesc
+    -- print =<< getFeed hackerNewsFeedDesc
+    -- print =<< getFeed techdirtFeedDesc
+    -- print =<< getFeed osNewsFeedDesc
+    print =<< getFeed wiredFeedDesc
