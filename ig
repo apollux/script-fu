@@ -5,7 +5,9 @@ module Main where
 
 import Control.Applicative ( (<$>) )
 import Control.Monad ( forM_, when )
+import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Maybe ( fromJust, catMaybes )
+import Data.Monoid ( mempty )
 import Data.String ( fromString )
 import Network.HTTP ( Request(..), RequestMethod(..), Response(..)
                     , HeaderName(..), findHeader
@@ -14,7 +16,7 @@ import Network.URI ( URI, parseURI )
 import System.IO ( hPutStrLn, stderr )
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Text.Blaze.Html.Renderer.Pretty ( renderHtml )
+import Text.Blaze.Html.Renderer.Utf8 ( renderHtml )
 import Text.Html ( HTML(..) )
 import Text.XML.HaXml ( Document(..), Element(..)
                       , CFilter(..), (/>), tag, txt )
@@ -154,6 +156,17 @@ getFeed fd = do
 page :: [Feed] -> H.Html
 page fs = H.docTypeHtml $ do
     H.head $ do
+        H.meta
+            H.! A.httpEquiv (fromString "Content-Type")
+            H.! A.content (fromString "text/html;charset=utf-8")
+        H.script
+            H.! A.type_ (fromString "text/javascript")
+            H.! A.src (fromString "js/ig.js")
+            $ mempty
+        H.link
+            H.! A.rel (fromString "styleSheet")
+            H.! A.type_ (fromString "text/css")
+            H.! A.href (fromString "css/ig.css")
         H.title (fromString "Home")
     H.body $ forM_ fs feedToHtml
   where
@@ -162,7 +175,7 @@ page fs = H.docTypeHtml $ do
            fromString (entryTitle e)
 
     feedToHtml feed = do
-        H.div $ do
+        H.div H.! A.class_ (fromString "feed") $ do
             H.h3 (fromString (feedTitle feed))
             H.ul $ forM_ (feedEntries feed) (H.li . entryToHtml)
 
@@ -185,4 +198,4 @@ main = do
                               ]
     when (not (null errs))
          (hPutStrLn stderr (unlines errs))
-    putStrLn (renderHtml (page feeds))
+    BS.putStrLn (renderHtml (page feeds))
