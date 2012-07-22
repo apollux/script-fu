@@ -4,11 +4,18 @@
 module Main where
 
 import Control.Applicative ( (<$>) )
+import Control.Monad ( forM_, when )
 import Data.Maybe ( fromJust, catMaybes )
+import Data.String ( fromString )
 import Network.HTTP ( Request(..), RequestMethod(..), Response(..)
                     , HeaderName(..), findHeader
                     , simpleHTTP )
 import Network.URI ( URI, parseURI )
+import System.IO ( hPutStrLn, stderr )
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
+import Text.Blaze.Html.Renderer.Pretty ( renderHtml )
+import Text.Html ( HTML(..) )
 import Text.XML.HaXml ( Document(..), Element(..)
                       , CFilter(..), (/>), tag, txt )
 import Text.XML.HaXml.Parse ( xmlParse' )
@@ -24,6 +31,7 @@ instance Show Entry where
 
 data Feed = Feed { feedTitle :: String
                  , feedEntries :: [Entry] }
+
 
 instance Show Feed where
     show (Feed { feedTitle = title, feedEntries = es }) =
@@ -143,10 +151,38 @@ getFeed fd = do
     text <- getUri (fdUri fd)
     return (parse fd =<< text)
 
+page :: [Feed] -> H.Html
+page fs = H.docTypeHtml $ do
+    H.head $ do
+        H.title (fromString "Home")
+    H.body $ forM_ fs feedToHtml
+  where
+    entryToHtml e = do
+        H.a H.! A.href (fromString (entryLink e)) $ do
+           fromString (entryTitle e)
+
+    feedToHtml feed = do
+        H.div $ do
+            H.h3 (fromString (feedTitle feed))
+            H.ul $ forM_ (feedEntries feed) (H.li . entryToHtml)
+
+getFeeds :: [FeedDescription] -> IO ([String], [Feed])
+getFeeds [] = return ([], [])
+getFeeds (fd : fds) = do
+    feedOrError <- getFeed fd
+    (errs, feeds) <- getFeeds fds
+    case feedOrError of
+      Left err   -> return (err : errs, feeds)
+      Right feed -> return (errs, feed : feeds)
+
 main :: IO ()
 main = do
-    -- print =<< getFeed slashdotFeedDesc
-    -- print =<< getFeed hackerNewsFeedDesc
-    -- print =<< getFeed techdirtFeedDesc
-    -- print =<< getFeed osNewsFeedDesc
-    print =<< getFeed wiredFeedDesc
+    (errs, feeds) <- getFeeds [ slashdotFeedDesc
+                              , hackerNewsFeedDesc
+                              , techdirtFeedDesc
+                              , osNewsFeedDesc
+                              , wiredFeedDesc
+                              ]
+    when (not (null errs))
+         (hPutStrLn stderr (unlines errs))
+    putStrLn (renderHtml (page feeds))
