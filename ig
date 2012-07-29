@@ -1,14 +1,18 @@
 #!/usr/bin/env runhaskell
 -- -*- mode: haskell -*-
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Main where
 
 import Control.Applicative ( (<$>) )
+import Control.Exception ( Exception(..), SomeException )
 import Control.Monad ( forM_, when )
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Maybe ( fromJust, catMaybes )
 import Data.Monoid ( mempty )
 import Data.String ( fromString )
+import Data.Text ( Text )
+import Data.Typeable ( Typeable )
 import Network.HTTP ( Request(..), RequestMethod(..), Response(..)
                     , HeaderName(..), findHeader
                     , simpleHTTP )
@@ -18,22 +22,18 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Text.Blaze.Html.Renderer.Utf8 ( renderHtml )
 import Text.Html ( HTML(..) )
-import Text.XML.HaXml ( Document(..), Element(..)
-                      , CFilter(..), (/>), tag, txt )
-import Text.XML.HaXml.Parse ( xmlParse' )
-import Text.XML.HaXml.Posn ( Posn(..) )
-import Text.XML.HaXml.Pretty ( content )
+import Text.XML
+import Text.XML.Cursor
 import Text.Interpol ( (^-^) )
 
-data Entry = Entry { entryTitle :: String
-                   , entryLink :: String }
+data Entry = Entry { entryTitle :: Text
+                   , entryLink :: Text }
 
 instance Show Entry where
     show e = "<a href=\"" ^-^ entryLink e ^-^ "\">" ^-^ entryTitle e ^-^ "</a>"
 
-data Feed = Feed { feedTitle :: String
+data Feed = Feed { feedTitle   :: String
                  , feedEntries :: [Entry] }
-
 
 instance Show Feed where
     show (Feed { feedTitle = title, feedEntries = es }) =
@@ -43,22 +43,29 @@ instance Show Feed where
 data FeedDescription =
     FeedDescription { fdTitle       :: String
                     , fdUri         :: URI
-                    , fdItemFilter  :: CFilter Posn
-                    , fdTitleFilter :: CFilter Posn
-                    , fdLinkFilter  :: CFilter Posn
+                    , fdItemFilter  :: Cursor -> [Cursor]
+                    , fdTitleFilter :: Cursor -> [Text]
+                    , fdLinkFilter  :: Cursor -> [Text]
                     }
 
 instance Show FeedDescription where
     show fd = "<FeedDescription for " ^-^ fdTitle fd ^-^ ">"
+
+newtype HttpException = HttpException String
+    deriving ( Typeable, Show )
+
+instance Exception HttpException
 
 defaultFeedDesc :: FeedDescription
 defaultFeedDesc =
     FeedDescription
     { fdTitle       = "The Mysterious Feed"
     , fdUri         = fromJust (parseURI "http://boom.org/kaboom.rss")
-    , fdItemFilter  = tag "channel" /> tag "item"
-    , fdTitleFilter = tag "item" /> tag "title" /> txt
-    , fdLinkFilter  = tag "item" /> tag "link" /> txt
+    , fdItemFilter  = \cursor -> cursor $// laxElement (fromString "item")
+    , fdTitleFilter = \cursor -> cursor $// laxElement (fromString "title")
+                                        &// content
+    , fdLinkFilter  = \cursor -> cursor $// laxElement (fromString "link")
+                                        &// content
     }
 
 slashdotFeedDesc :: FeedDescription
@@ -66,7 +73,6 @@ slashdotFeedDesc =
     defaultFeedDesc
     { fdTitle      = "Slashdot"
     , fdUri        = fromJust (parseURI "http://rss.slashdot.org/Slashdot/slashdot")
-    , fdItemFilter = tag "item"
     }
 
 hackerNewsFeedDesc :: FeedDescription
@@ -74,7 +80,8 @@ hackerNewsFeedDesc =
     defaultFeedDesc
     { fdTitle      = "Hacker News"
     , fdUri        = fromJust (parseURI "http://news.ycombinator.com/rss")
-    , fdLinkFilter = tag "item" /> tag "comments" /> txt
+    , fdLinkFilter = \cursor -> cursor $// laxElement (fromString "comments")
+                                       &// content
     }
 
 techdirtFeedDesc :: FeedDescription
@@ -105,50 +112,50 @@ bookmarksFeedDesc =
     , fdUri         = fromJust (parseURI "http://www.abstractbinary.org/bookmarks.rss")
     }
 
-getUri :: URI -> IO (Either String String)
+getUri :: URI -> IO (Either SomeException BS.ByteString)
 getUri uri = do
-    resp <- simpleHTTP (Request { rqURI = uri
-                                , rqMethod = GET, rqHeaders = []
-                                , rqBody = "" })
+    resp <- simpleHTTP (Request { rqURI     = uri
+                                , rqMethod  = GET
+                                , rqHeaders = []
+                                , rqBody    = fromString "" })
     case resp of
       Left err ->
-          return (Left ("http error: " ^-^ err))
+          httpException ("http error: " ^-^ err)
       Right r ->
           case rspCode r of
             (2, _, _) ->
                 return (Right (rspBody r))
             (3, _, _) ->
                 case findHeader HdrLocation r of
-                  Nothing  -> return (Left ("bad redirection: " ^-^ show r))
+                  Nothing  -> httpException ("bad redirection: " ^-^ show r)
                   Just url -> case parseURI url of
-                                Nothing  -> return (Left ("bad redirection: "
-                                                          ^-^ url))
+                                Nothing  -> httpException ("bad redirection: "
+                                                           ^-^ url)
                                 Just uri -> getUri uri
             _ ->
-                return (Left ("unknown http: " ^-^ show r))
-
-parse :: FeedDescription -> String -> Either String Feed
-parse fd text = xmlToFeed <$> (xmlParse' "input" text)
+                httpException ("unknown http: " ^-^ show r)
   where
-    xmlToFeed = Feed (fdTitle fd) . catMaybes . map mkFeed
-              . concatMap (fdItemFilter fd) . getContents . getElements
+    httpException = return . Left . toException . HttpException
 
-    getElements (Document _ _ es _) = es
+parse :: FeedDescription -> BS.ByteString -> Either SomeException Feed
+parse fd text = xmlToFeed <$> parseLBS def text
+  where
+    xmlToFeed doc =
+        let cursor = fromDocument doc in
+        let items = fdItemFilter fd cursor in
+        Feed (fdTitle fd) . catMaybes $ map mkFeed items
 
-    getContents (Elem _ _ cs) = cs
+    mkFeed cursor =
+        let title = fdTitleFilter fd cursor
+            link  = fdLinkFilter fd cursor
+        in case (title, link) of
+             (t : _, l : _) ->
+                 Just (Entry { entryTitle = t
+                             , entryLink = l })
+             _ ->
+                 Nothing
 
-    contentText = show . content
-
-    mkFeed xml = let title = (fdTitleFilter fd) xml
-                     link  = (fdLinkFilter fd) xml
-                 in case (title, link) of
-                      (t : _, l : _) ->
-                          Just (Entry { entryTitle = contentText t
-                                      , entryLink = contentText l })
-                      _ ->
-                          Nothing
-
-getFeed :: FeedDescription -> IO (Either String Feed)
+getFeed :: FeedDescription -> IO (Either SomeException Feed)
 getFeed fd = do
     text <- getUri (fdUri fd)
     return (parse fd =<< text)
@@ -171,15 +178,15 @@ page fs = H.docTypeHtml $ do
     H.body $ forM_ fs feedToHtml
   where
     entryToHtml e = do
-        H.a H.! A.href (fromString (entryLink e)) $ do
-           fromString (entryTitle e)
+        H.a H.! A.href (H.toValue (entryLink e)) $ do
+           H.toMarkup (entryTitle e)
 
     feedToHtml feed = do
         H.div H.! A.class_ (fromString "feed") $ do
             H.h3 (fromString (feedTitle feed))
             H.ul $ forM_ (feedEntries feed) (H.li . entryToHtml)
 
-getFeeds :: [FeedDescription] -> IO ([String], [Feed])
+getFeeds :: [FeedDescription] -> IO ([SomeException], [Feed])
 getFeeds [] = return ([], [])
 getFeeds (fd : fds) = do
     feedOrError <- getFeed fd
@@ -197,5 +204,5 @@ main = do
                               , wiredFeedDesc
                               ]
     when (not (null errs))
-         (hPutStrLn stderr (unlines errs))
+         (hPutStrLn stderr (unlines (map show errs)))
     BS.putStrLn (renderHtml (page feeds))
