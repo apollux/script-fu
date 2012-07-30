@@ -168,12 +168,12 @@ page fs = H.docTypeHtml $ do
             H.! A.content (fromString "text/html;charset=utf-8")
         H.script
             H.! A.type_ (fromString "text/javascript")
-            H.! A.src (fromString "js/ig.js")
+            H.! A.src (fromString "r/ig.js")
             $ mempty
         H.link
             H.! A.rel (fromString "styleSheet")
             H.! A.type_ (fromString "text/css")
-            H.! A.href (fromString "css/ig.css")
+            H.! A.href (fromString "r/ig.css")
         H.title (fromString "Home")
     H.body $ forM_ fs feedToHtml
   where
