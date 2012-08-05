@@ -2,6 +2,19 @@ Script-Fu
 =========
 > Script Miscellanea
 
+## heartbeater
+
+Poll a web address as a way of announcing your presence to the world.
+Note that this spawns a background daemon.
+
+    ./heartbeater
+
+## ig
+
+Grab a bunch of RSS feeds and create a basic webpage with them.  This is meant to replace the now-moribund `iGoogle`.
+
+    ./ig
+
 ## tcpdump.sh
 
 > Poorman's tcpdump: an intercepting transparent proxy with a pipe and two netcats
