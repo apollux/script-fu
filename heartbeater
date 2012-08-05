@@ -1,0 +1,21 @@
+#!/usr/bin/env runhaskell
+-- -*- mode: haskell -*-
+
+import Control.Concurrent
+import Control.Monad
+import Data.Default
+import Data.Maybe
+import Network.BSD
+import Network.HTTP
+import Network.URI
+import System.Posix.Daemon
+
+main :: IO ()
+main = runDetached Nothing def $ forever $ do
+    hostname <- getHostName
+    _ <- simpleHTTP
+             (Request { rqURI     = fromJust (parseURI "http://foo.com/dns")
+                      , rqMethod  = GET
+                      , rqHeaders = []
+                      , rqBody    = hostname })
+    threadDelay (600 * 1000 * 1000)
