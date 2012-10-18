@@ -113,6 +113,9 @@
 (global-set-key (kbd "M-n") 'scroll-up-command)
 (global-set-key (kbd "M-p") 'scroll-down-command)
 
+;; Follow tags with cscope
+(global-set-key (kbd "M-.") 'cscope-find-this-symbol)
+
 ;; Comments
 (global-set-key (kbd "C-c c") 'comment-dwim)
 
@@ -153,6 +156,7 @@
           (lambda ()
             (setq show-trailing-whitespace nil)))
 (add-hook 'mu4e-compose-mode-hook 'flyspell-mode)
+(setq mu4e-html2text-command "html2text -utf8 -width 120 -nobs")
 
 ;; Underscores are word separators
 ;; FIXME This needs to be added to the relevant mode hooks.
