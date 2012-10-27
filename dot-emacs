@@ -13,6 +13,9 @@
 (cua-mode 0)
 (transient-mark-mode 1)
 
+;; Auto-revert
+(global-auto-revert-mode)
+
 ;; Whitespace
 (setq whitespace-style '(face tabs trailing lines-tail))
 
