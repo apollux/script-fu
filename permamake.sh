@@ -66,7 +66,7 @@ while true; do
     fi
 
     echo "${txtbld}### Waiting for filesystem changes...${txtrst}"
-    inotifywait -q -e create -e close_write ${files}
+    inotifywait -q -r -e create -e close_write ${files}
     echo -e "${txtbld}### Files changed${txtrst}\n"
     snapshot_files "${files}"
 done
